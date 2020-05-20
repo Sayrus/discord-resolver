@@ -17,3 +17,12 @@ Navigate to `localhost:8080/<uid>` and you will get the information as a JSON.
 ## Why?
 I was bored and ReCaptcha on `discord.id` were taking too much time. I didn't
 find a self-hosted version of it so I made one.
+
+# TODO
+
+A lot of things:
+- UI (Feel free to do a PR)
+- Check if the Discord Bot has been disconnected / is ready
+- Check if the UID is valid before trying to fetch the user
+- Handle errors
+- Health endpoint
