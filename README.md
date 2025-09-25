@@ -37,6 +37,5 @@ his UID. This project uses this API to fetch it.
 # TODO
 
 A lot of things:
-- UI (Feel free to do a PR)
 - Check if the UID is a valid Snowflake
 - Handle errors
