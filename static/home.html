@@ -168,6 +168,8 @@
                         errorMessage = 'Discord user not found. Please check the User ID and try again.';
                     } else if (errorMessage.includes('UID must be numeric')) {
                         errorMessage = 'User ID must contain only numbers.';
+                    } else if (errorMessage.includes('UID must be a valid Discord Snowflake')) {
+                        errorMessage = 'UID must be a valid Discord Snowflake.';
                     }
 
                     showResult(errorMessage, 'error');

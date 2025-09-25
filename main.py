@@ -20,10 +20,25 @@ class DiscordClient(discord.Client):
         return self.ready
 
 
+def is_valid_snowflake(snowflake_str):
+    """Validate if a string is a valid Discord Snowflake ID"""
+    try:
+        snowflake = int(snowflake_str)
+        # Discord Snowflakes are 64-bit integers
+        # They should be between 2^22 and 2^63-1 (realistic range for Discord IDs)
+        # Discord epoch started January 1, 2015, so minimum realistic ID is around 175928847299117063
+        return 4194304 <= snowflake < 9223372036854775808  # 2^22 to 2^63-1
+    except (ValueError, OverflowError):
+        return False
+
+
 async def fetch_by_id(request):
     uid = request.match_info["uid"]
     if not uid.isnumeric():
         return web.Response(text=json.dumps({"error": "UID must be numeric"}))
+
+    if not is_valid_snowflake(uid):
+        return web.Response(text=json.dumps({"error": "UID must be a valid Discord Snowflake"}))
 
     if not client.is_ready() or client.is_closed():
         return web.Response(text=json.dumps({"error": "Discord client not ready"}))
