@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Resolver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            border-color: #5865F2;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #4752C4;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #e2e3e5;
+            border: 1px solid #d6d8db;
+            color: #383d41;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Discord User Resolver</h1>
+        <form id="resolverForm">
+            <div class="input-group">
+                <label for="uid">Discord User ID:</label>
+                <input type="text" id="uid" name="uid" placeholder="Enter Discord User ID" required>
+            </div>
+            <button type="submit">Resolve User</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('resolverForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const uid = document.getElementById('uid').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!uid) {
+                showResult('Please enter a Discord User ID', 'error');
+                return;
+            }
+
+            if (!uid.match(/^\d+$/)) {
+                showResult('Discord User ID must be numeric', 'error');
+                return;
+            }
+
+            try {
+                showResult('Resolving user...', 'loading');
+
+                const response = await fetch(`/by-uid/${uid}`);
+
+                if (!response.ok) {
+                    if (response.status === 500) {
+                        showResult('Server error occurred. Please try again later.', 'error');
+                        return;
+                    }
+                    if (response.status === 404) {
+                        showResult('API endpoint not found.', 'error');
+                        return;
+                    }
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    showResult('Invalid response from server.', 'error');
+                    return;
+                }
+
+                if (response.ok && data && !data.error) {
+                    if (!data.uid) {
+                        showResult('Invalid user data received.', 'error');
+                        return;
+                    }
+
+                    const avatarImg = data.avatar ?
+                        `<img src="${data.avatar}" alt="User Avatar" style="width: 64px; height: 64px; border-radius: 50%; margin-right: 15px;">` :
+                        '<div style="width: 64px; height: 64px; background: #5865F2; border-radius: 50%; margin-right: 15px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px; flex-shrink: 0;">?</div>';
+
+                    const userInfo = `
+                        <div style="display: flex; align-items: flex-start; gap: 15px;">
+                            ${avatarImg}
+                            <div>
+                                <strong>User Found:</strong><br><br>
+                                <strong>ID:</strong> ${data.uid}<br>
+                                <strong>Tag:</strong> ${data.tag || 'Unknown'}<br>
+                                <strong>Bot:</strong> ${data.bot ? 'Yes' : 'No'}<br>
+                                <strong>Created:</strong> ${data.created_at ? new Date(data.created_at * 1000).toLocaleString() : 'Unknown'}
+                            </div>
+                        </div>
+                    `;
+                    showResult(userInfo, 'success');
+                } else {
+                    // Handle specific error messages
+                    let errorMessage = data.error || 'An unknown error occurred';
+
+                    if (errorMessage.includes('Discord client not ready')) {
+                        errorMessage = 'Discord service is starting up. Please wait a moment and try again.';
+                    } else if (errorMessage.includes('User not found')) {
+                        errorMessage = 'Discord user not found. Please check the User ID and try again.';
+                    } else if (errorMessage.includes('UID must be numeric')) {
+                        errorMessage = 'User ID must contain only numbers.';
+                    } else if (errorMessage.includes('UID must be a valid Discord Snowflake')) {
+                        errorMessage = 'UID must be a valid Discord Snowflake.';
+                    }
+
+                    showResult(errorMessage, 'error');
+                }
+            } catch (error) {
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showResult('Unable to connect to server. Please check your connection.', 'error');
+                } else if (error.name === 'AbortError') {
+                    showResult('Request timed out. Please try again.', 'error');
+                } else {
+                    showResult('Network error: ' + error.message, 'error');
+                }
+            }
+        });
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
